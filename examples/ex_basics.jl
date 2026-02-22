@@ -44,5 +44,4 @@ add_text!(fig, [2.4, -0.8, 0.9], "torus", "teal")
 add_text!(fig, [5.9, -0.8, 0.9], "plane", "black")
 add_text!(fig, [9.4, -0.8, 0.9], "disk", "purple")
 
-set_view!(fig, 0, 0, 0)
 display(fig)

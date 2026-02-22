@@ -185,6 +185,54 @@ function _append_polygon_mesh!(x::Vector{Float64}, y::Vector{Float64}, z::Vector
     return offset + length(pts_ordered)
 end
 
+function _is_stl_binary(filepath::String)
+    filesize(filepath) < 84 && return false
+    open(filepath) do io
+        read(io, 80)
+        ntri = ltoh(read(io, UInt32))
+        return filesize(filepath) == 84 + ntri * 50
+    end
+end
+
+function _parse_stl_binary(io::IO)
+    read(io, 80)
+    ntri = ltoh(read(io, UInt32))
+    x = Float64[]; y = Float64[]; z = Float64[]
+    i = Int[]; j = Int[]; k = Int[]
+    for t in 1:ntri
+        read(io, 12)  # skip normal
+        for v in 1:3
+            push!(x, Float64(ltoh(read(io, Float32))))
+            push!(y, Float64(ltoh(read(io, Float32))))
+            push!(z, Float64(ltoh(read(io, Float32))))
+        end
+        idx = (t - 1) * 3
+        push!(i, idx); push!(j, idx + 1); push!(k, idx + 2)
+        read(io, 2)  # skip attribute
+    end
+    return x, y, z, i, j, k
+end
+
+function _parse_stl_ascii(io::IO)
+    x = Float64[]; y = Float64[]; z = Float64[]
+    i = Int[]; j = Int[]; k = Int[]
+    tri_count = 0
+    for line in eachline(io)
+        tokens = split(strip(line))
+        if length(tokens) == 4 && tokens[1] == "vertex"
+            push!(x, parse(Float64, tokens[2]))
+            push!(y, parse(Float64, tokens[3]))
+            push!(z, parse(Float64, tokens[4]))
+            if mod(length(x), 3) == 0
+                idx = tri_count * 3
+                push!(i, idx); push!(j, idx + 1); push!(k, idx + 2)
+                tri_count += 1
+            end
+        end
+    end
+    return x, y, z, i, j, k
+end
+
 """
     cuboids(origin::Vector{<:Real}, dimension::Vector{<:Real}, color::String=""; opc::Real=1)
 
@@ -868,6 +916,47 @@ function polygons(pts::Vector, ng::Int, color::String=""; opc::Real=1, ah::Real=
     return mesh3d(x=x, y=y, z=z,
         i=i, j=j, k=k,
         alphahull=ah,
+        color=color,
+        opacity=opc,
+        lighting=attr(
+            diffuse=0.1,
+            specular=1.2,
+            roughness=1.0
+        ),
+    )
+end
+
+"""
+    stlmesh(filepath::String, color::String=""; opc::Real=1)
+
+    Loads an STL file (binary or ASCII) and returns a mesh3d trace.
+
+    # Arguments
+    - `filepath::String`: Path to the STL file.
+    - `color::String`: The color of the mesh.
+
+    # Keywords
+    - `opc`: The opacity of the mesh. Default is 1.
+"""
+function stlmesh(filepath::String, color::String=""; opc::Real=1)
+    @assert isfile(filepath) "File not found: $filepath"
+
+    if color == ""
+        color = _random_rgb()
+    end
+
+    x, y, z, i, j, k = open(filepath) do io
+        if _is_stl_binary(filepath)
+            _parse_stl_binary(io)
+        else
+            _parse_stl_ascii(io)
+        end
+    end
+    @assert length(x) > 0 "No triangles found in STL file."
+
+    return mesh3d(x=x, y=y, z=z,
+        i=i, j=j, k=k,
+        flatshading=true,
         color=color,
         opacity=opc,
         lighting=attr(

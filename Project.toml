@@ -1,7 +1,7 @@
 name = "PlotlyGeometries"
 uuid = "da4dd95e-df4f-4caf-ac06-cee3b0f5c2e6"
 authors = ["Jake W. Liu"]
-version = "2.3.0"
+version = "2.4.0"
 
 [deps]
 BatchAssign = "e837618a-1c15-48db-beb0-68297dffdb28"
@@ -12,7 +12,7 @@ PlotlySupply = "a389b534-8bca-4fe3-8ff2-14829cd8824f"
 [compat]
 BatchAssign = "1"
 Combinatorics = "1"
-PlotlySupply = "1.4.0"
+PlotlySupply = "1.6.2"
 julia = "1.10"
 
 [extras]
